@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<!-- STYLE =====================================================-->
+		<link rel="stylesheet" href="/css/bitsgofer.css">
+		<link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+
+		<!-- METADATA ==================================================-->
+		<title>Summary and commentary on talks at Gophercon Singapore
+2019</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="date" content=''>
+	</head>
+	<body>
+		<!---------------------------------------------------------------->
+		<!-- NAVIGATION BAR ---------------------------------------------->
+		<header class="row">
+			<a href="#" class="logo">&gt; <span class="blinking-cursor">_</span></a>
+			<a href="/" class="button">Home</a>
+			<a href="/projects.html" class="button">Projects</a>
+			<a href="/about.html" class="button">About</a>
+		</header>
+		<!-- NAVIGATION BAR ---------------------------------------------->
+		<!---------------------------------------------------------------->
+
+
+		<div class="row" id="doc-wrapper">
+			<div class="col-md-2 col-lg-2"></div>
+			<main class="col-sm-12 col-md-8 col-lg-8" id="doc-content">
+				<article class="line-numbers match-braces">
+					<!---------------------------------------------------------------->
+					<!-- CONTENT ----------------------------------------------------->
+					<h1>Summary and commentary on talks at Gophercon Singapore 2019</h1>
+					<p class="article-date"><strong>Published</strong>:  | <strong>Edited</strong>: 2023-April-14</p>
+					<blockquote>
+<p>Disclaimer: This is a highly subjective summary and commentary on
+talks at Gophercon Singapore 2019.</p>
+<p>It is mainly for me to keep distil ideas from the conference. I took
+liberty to paraphrase many things, so if you want the original talk,
+wait for official videos. Please expect that YMMV, too.</p>
+<p>UPDATE: Rephrased a few parts. I write most of this from memory now,
+so there might be things that don’t match with what happened
+&gt;.&lt;</p>
+</blockquote>
+<h1 id="clear-is-better-than-clever">Clear is better than clever</h1>
+<p><a href="https://2019.gophercon.sg/speakers/#dave-cheney">Dave
+Cheney</a> talked about clarity, how it is different from readability
+and why it is important. If you have seen his notes/book for the
+Practical Go workshop at <a
+href="https://dave.cheney.net/practical-go/presentations/qcon-china.html">Gophercon
+China</a> or <a
+href="https://dave.cheney.net/practical-go/presentations/gophercon-singapore-2019.html">Gophercon
+Singapore 2019</a>, it will feel very similar.</p>
+<p>Programmers with more “war stories” will appreciate it more, I
+think.</p>
+<p>The talk start with a quote from last year’s keynote:</p>
+<blockquote>
+<p>Software engineering is what happens to programming when you add time
+and other programmers.</p>
+<p>— <a href="https://research.swtch.com/vgo-eng">Russ Cox, referencing:
+“Go at Google: Language Design in the Service of Software
+Engineering”</a></p>
+</blockquote>
+<p>To me, the concept of clarity proposed is essentially “easy for new
+maintainers to pickup”. This is subjective though. Personally, this
+probably means you can get a fairly experienced programmer who is
+familiar with the project’s languages, show them the code and not
+getting a lot of WTFs.</p>
+<p>The first half of the talk re-emphasize that “code is read more often
+than it is written” (Guido van Rossum) and that “simplicity is
+prerequisite for reliability” (Edsger W. Dijkstra). In the later half,
+Dave gave <a
+href="https://dave.cheney.net/practical-go/presentations/gophercon-singapore-2019.html">guidelines
+on naming, declaring variables, indenting flow and designing public
+APIs</a>, to make it clear what the code is doing.</p>
+<p>The talk ends with a reality of software project: people change jobs
+and projects all the time, so when you write code, try to help the next
+person.</p>
+<h2 id="other-tidbits">Other tidbits</h2>
+<p>I picked up a few additional things from Dave’s workshop, too.</p>
+<h4 id="variable-shadowing">1. <a
+href="https://en.wikipedia.org/wiki/Variable_shadowing">Variable
+shadowing</a></h4>
+<p>When we see the same variable name appear in different scope and it
+mess with our head.</p>
+<h4 id="books">2. Books</h4>
+<ul>
+<li><a
+href="https://www.goodreads.com/book/show/3369746-the-limits-of-software">The
+Limits of Software: People, project and Perspectives</a></li>
+<li><a
+href="https://mitpress.mit.edu/books/principles-operating-systems">Principles
+of Operating Systems</a></li>
+</ul>
+<h4
+id="sometimes-what-we-really-want-out-of-a-type-is-a-subset-of-its-method-set.">3.
+Sometimes, what we really want out of a type is (a subset of) its <a
+href="https://github.com/golang/go/wiki/MethodSets#the-spec">method
+set</a>.</h4>
+<p>For example, we write:</p>
+<pre><code class="language-go">func (thing *MyStruct) SaveTo(f *os.File) error {
+    // serialize thing -&gt; bytes, example:
+    b, err := json.Marshal(thing)
+    if err != nil {
+        // ...
+    }
+
+    // write bytes -&gt; open file, example:
+    n, err := f.Write(b)
+    // check n and err
+
+    // close file (and persist the content)
+    if err := f.Close(); err != nil {
+        // ...
+    }
+}</code></pre>
+<p><code>*os.File</code> have a lot of methods we don’t need like
+<code>.Fd()</code>, <code>.Stat()</code>. Hence, we can use an
+interface/type that defines only <code>.Write()</code> and
+<code>.Close()</code>, which happens to be <code>io.WriteCloser</code>,
+thus we can write.</p>
+<pre><code class="language-go">func (thing *MyStruct) SaveTo(w io.Writer) error {
+    // ...
+
+}</code></pre>
+<p>This have some other nice effects:</p>
+<ul>
+<li>The new type is stricter. It’s not possible for funny things like
+calling <code>.Truncate()</code>.</li>
+<li>It’s easier to write <strong>some</strong> tests as well, since you
+can use a <code>*bytes.Buffer</code> instead of opening a file. (NOTE:
+You still need an <code>*os.File</code> if you want to check the
+“writing to a file” side-effect. However, other tests that don’t need it
+can use something else).</li>
+</ul>
+<h4 id="variadic-function-params-that-requires-at-least-one-value">4.
+Variadic function params that requires at least one value</h4>
+<p><a
+href="https://dave.cheney.net/practical-go/presentations/gophercon-singapore-2019.html#_prefer_var_args_to_t_parameters">This
+part was from the workshop</a>.</p>
+<pre><code class="language-go">func check(first int, remaining ...int) {
+    // ...
+}</code></pre>
+<p>This will only compile when there is at least one elements. It also
+have a small cost where you need to merge <code>first</code> and
+<code>remaining</code> to be a slice again (sometimes only).</p>
+<p>It’s a shame I only notice this now, despite all the
+<code>x:xs</code> pattern in Haskell :(</p>
+<h4 id="gofmt-and-social-contract">5. Gofmt and social contract</h4>
+<p>One thing that Go get right is <code>gofmt</code>, as it became an
+enforced social contract for most Go programmers, before any stubborn
+“style camp” appear.</p>
+<hr />
+<h1 id="higher-reliability-software-patterns-for-go">High(er)
+Reliability Software Patterns for Go</h1>
+<p><a href="https://2019.gophercon.sg/speakers/#junade-ali">Junade
+Ali</a> talked about contracts and showed examples of how to write them
+in Go.</p>
+<p>When writing critical software, we will need them and more
+(e.g. contracts w.r.t timing, halting, correctness through concurrent
+execution, resource usage, etc).</p>
+<p>P.S: You shouldn’t use Go for critical software, anyway.</p>
+<p>Another problematic area is performance (checking contracts cost CPU
+cycles) and graceful failure (what to do when contracts fails), which
+are things we also need to think of.</p>
+<h2 id="other-tidbits-1">Other tidbits</h2>
+<h4 id="design-by-contracts-vs-defensive-programming">1. Design by
+contracts vs Defensive programming</h4>
+<p>This will help with the confusion: <a
+href="https://softwareengineering.stackexchange.com/questions/125399/differences-between-design-by-contract-and-defensive-programming"
+class="uri">https://softwareengineering.stackexchange.com/questions/125399/differences-between-design-by-contract-and-defensive-programming</a></p>
+<h4 id="critical-failures-from-software">2. Critical failures from
+software</h4>
+<ul>
+<li><a
+href="https://users.ece.cmu.edu/~koopman/pubs/koopman14_toyota_ua_slides.pdf">Toyota
+Camry’s unintended acceleration</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Qantas_Flight_72">Quantas
+Flight 72’s uncommanded pitch-down</a></li>
+</ul>
+<h4 id="language-with-contracts">3. Language with contracts</h4>
+<ul>
+<li><a
+href="https://en.wikipedia.org/wiki/SPARK_%28programming_language%29">Ada
+SPARK</a></li>
+<li><a
+href="https://en.wikipedia.org/wiki/Eiffel_%28programming_language%29">Eiffel</a></li>
+</ul>
+<h4 id="other-readings">4. Other readings</h4>
+<ul>
+<li><a
+href="http://se.inf.ethz.ch/~meyer/publications/computer/contract.pdf">Design
+by Contract - Bertrand Meyer</a></li>
+</ul>
+<hr />
+<h1 id="understanding-allocations-the-stack-and-the-heap">Understanding
+Allocations: The stack and the heap</h1>
+<p><a href="https://2019.gophercon.sg/speakers/#jacob-walker">Jacob
+Walker</a> talked about heap and stack in Go.</p>
+<p>Basically, most of the time you shouldn’t need to know about whether
+variables are allocated in heap or stack. The Go compiler should make
+the correct choice (not necessary the most performance-friendly one,
+however).</p>
+<p>Some rule of thumbs:</p>
+<ul>
+<li>Sharing down (pointer used further down in the function/variables
+whose pointers you pass into next function call) typically stays in the
+stack.</li>
+<li>Sharing up (pointer returned to calling functions) typically gets
+allocated from heap.</li>
+<li>Wrapper structs (slice, map, channel) have special semantics, since
+they don’t contain the actual values.</li>
+<li>More info: <a href="https://golang.org/doc/faq#stack_or_heap"
+class="uri">https://golang.org/doc/faq#stack_or_heap</a></li>
+</ul>
+<h2 id="other-tidbits-2">Other tidbits</h2>
+<h4 id="gcflags">1. gcflags</h4>
+<p><code>go tool compile -h</code> gives the options to pass in
+<code>-gcflags</code> (go compile flags?).</p>
+<p>I have been looking for this since forever, yay!</p>
+<h4 id="explains-the-design-of-io.reader-api">2. Explains the design of
+<code>io.Reader</code> API</h4>
+<pre><code>Read(p []byte) (n int, err error)</code></pre>
+<p>It make sense now, since we usually call <code>Read()</code> in tight
+loops.</p>
+<p>If the API is <code>Read() ([]byte, error)</code>, slices will escape
+to heap and there will be a lot of things to <code>malloc</code> + GC
+=&gt; horrible performance.</p>
+<hr />
+<h1 id="going-secure-with-go">Going secure with Go</h1>
+<p><a
+href="https://2019.gophercon.sg/speakers/#natalie-pistunovich">Natalie
+Pistunovich</a> talked about some guidelines on writing secure
+application in Go.</p>
+<p>Many tools/projects for Go was introduced, though some basic concepts
+from <a
+href="https://www.owasp.org/images/7/72/OWASP_Top_10-2017_%28en%29.pdf.pdf">OWASP</a>
+will help establishing better context.</p>
+<p>Some bits that I picked up:</p>
+<ul>
+<li>Environment variable is not always safe (compromised host can show
+/proc/pid/environ). This is a good counter example for “env var is more
+secure than config file &amp;&amp; CLI arguments”!</li>
+<li>Uses <a href="https://github.com/securego/gosec">gosec</a> to
+analyze code.</li>
+<li>Uses <a href="https://github.com/OpenPeeDeeP/depguard">depguard</a>
+to check dependencies against a verified list.</li>
+<li>pprof HTTP server should not be expose to public</li>
+<li>Uses splunk, sumologic, enterprise Elasticsearch to hide
+user-identifiable info from dev/ops.</li>
+<li>Know your transitive dependecies (a.k.a, for me, this means be aware
+of the whole vendor tree)</li>
+<li>Uses <a href="https://dependabot.com/">dependabot</a> for automated
+PR when popular project gets updated.</li>
+<li>Having a central dependency repo is risky (hello, npm?).</li>
+<li><a href="https://github.com/grafeas/kritis">Kritis</a></li>
+</ul>
+<h2 id="other-tidbits-3">Other tidbits</h2>
+<p>I think <a
+href="https://ma.ttias.be/i-forgot-how-to-manage-a-server/"
+class="uri">https://ma.ttias.be/i-forgot-how-to-manage-a-server/</a> and
+<a href="https://ma.ttias.be/automating-unknown/"
+class="uri">https://ma.ttias.be/automating-unknown/</a> will be a good
+complementary perspective, since the talk suggested automating all these
+workflow.</p>
+<hr />
+<h1 id="using-and-writing-go-analyses">Using and Writing Go
+Analyses</h1>
+<p><a href="https://2019.gophercon.sg/speakers/#michael-matloob">Michael
+Matloob</a> talked about <a
+href="https://godoc.org/golang.org/x/tools/go/analysis">analysis</a>.</p>
+<p>This seems most helpful for writing tools that deal with the source’s
+AST.</p>
+<p>It might be worth some investment if we want to build linters that
+enforce company-wide practices.</p>
+<hr />
+<h1 id="deep-learning-in-go">Deep learning in Go</h1>
+<p><a href="https://2019.gophercon.sg/speakers/#karthic-rao">Karthic
+Rao</a> talks about Go and deep learning.</p>
+<p>Long talk, but the basic take-away seems to be: don’t do it with Go,
+uses Python or Java instead.</p>
+<hr />
+<h1 id="garbage-collection-semantics">Garbage Collection Semantics</h1>
+<p><a href="https://2019.gophercon.sg/speakers/#bill-kennedy">Bill
+Kennedy</a> talks about the (simplified) behavior of the Go GC and how
+we can write code to help it.</p>
+<p>Mark phrase:</p>
+<ul>
+<li>setup + turn on write barrier</li>
+<li>some assisted marking from goroutines that allocates the most</li>
+<li>stop the world</li>
+<li>turn off write barrier + clean up</li>
+</ul>
+<p>Sweep phrase:</p>
+<ul>
+<li>sweep: go through things in heap that was marked for GC (concurrent
+to other goroutines)</li>
+</ul>
+<p>General advice is try to allocate (to heap) less -&gt; less work for
+the GC.</p>
+<h2 id="other-tidbits-4">other tidbits</h2>
+<h4 id="nice-gc-visualization">1. Nice GC visualization</h4>
+<ul>
+<li>At <a
+href="https://spin.atomicobject.com/2014/09/03/visualizing-garbage-collection-algorithms/"
+class="uri">https://spin.atomicobject.com/2014/09/03/visualizing-garbage-collection-algorithms/</a></li>
+</ul>
+<h4 id="tracing-the-gc">2. Tracing the GC</h4>
+<p>Run with <code>GODEBUG=gctrace=1</code></p>
+<h4 id="personal-thoughts">3. Personal thoughts</h4>
+<p>Writing GC-aware code will be a struggle between trying to reduce
+allocation on heap vs preserving clarity.</p>
+<p>We ought to do this responsibly (only when it’s actually needed, and
+after benchmarking first).</p>
+<hr />
+<h1 id="go-pls-stop-breaking-my-editor">Go, pls stop breaking my
+editor</h1>
+<p><a
+href="https://2019.gophercon.sg/speakers/#rebecca-stambler">Rebecca
+Stambler</a> laid out the problems that lead to broken open-source Go
+tools after each releases (tight coupling with the build tool).</p>
+<p>She then introduced <a
+href="https://godoc.org/golang.org/x/tools/go/packages">the packages
+tool</a> and LSP (<a
+href="https://microsoft.github.io/language-server-protoco%5D">Language
+Server Protocol</a>) for Go, which will make working with editors
+easier.</p>
+<hr />
+<h1 id="optimizing-go-code-without-a-blindfold">Optimizing Go code
+without a blindfold</h1>
+<p><a href="https://2019.gophercon.sg/speakers/#daniel-marti">Daniel
+Martí</a> talked about statistic and benchmarking.</p>
+<p>He explained statistical approaches that will help with benchmarking
+(more samples, take note of p-values, etc). It’s universal and can be
+used for many types of benchmark.</p>
+<p>Useful tools:</p>
+<ul>
+<li><a href="https://github.com/aclements/perflock">perflock</a>:
+throttle workload by default -&gt; easier to benchmark without getting
+CPU hot (which affects performance).</li>
+<li><a
+href="https://godoc.org/golang.org/x/perf/cmd/benchstat">benchstat</a>
+for auto statistics.</li>
+<li><a
+href="https://godoc.org/golang.org/x/tools/cmd/benchcmp">benchcmp</a> to
+compare micro benchmarks.</li>
+</ul>
+<h2 id="other-tidbits-5">other tidbits</h2>
+<h4 id="entry-points-to-understanding-the-compiler">1. Entry points to
+understanding the compiler</h4>
+<ul>
+<li><a
+href="https://github.com/golang/go/blob/master/src/cmd/compile/README.md"
+class="uri">https://github.com/golang/go/blob/master/src/cmd/compile/README.md</a></li>
+<li><a
+href="https://github.com/golang/go/blob/master/src/cmd/compile/internal/ssa/README.md"
+class="uri">https://github.com/golang/go/blob/master/src/cmd/compile/internal/ssa/README.md</a></li>
+</ul>
+<h4 id="existing-optimizations">2. Existing optimizations</h4>
+<p>The compiler already optimize some patterns, so we don’t have to
+think too much about performance and can focus on correctness:</p>
+<pre><code class="language-go">// m map[string]string
+
+for k, _ := range m {
+    delete(m, k)
+}</code></pre>
+<p>This no longer iterate over all keys and will just clear the map.</p>
+<pre><code class="language-go">len([]rune(str))</code></pre>
+<p>This no longer allocate/convert type and will just give you the
+length.</p>
+<h4 id="a-way-to-get-more-insight">3. A way to get more insight</h4>
+<pre><code>GOSSAFUNC=&lt;...&gt; go build</code></pre>
+<hr />
+<h1
+id="controlling-distributed-energy-resources-with-edge-computing-and-go">Controlling
+Distributed Energy Resources with Edge Computing and Go</h1>
+<p><a href="https://2019.gophercon.sg/speakers/#sausheong-chang">Sau
+Sheong</a> and <a
+href="https://2019.gophercon.sg/speakers/#rullyadrian-santosa">Rully</a>
+talked about projects at my company.</p>
+<hr />
+<h1 id="data-journey-with-golang-graphql-and-microservices">Data Journey
+with Golang, GraphQL and Microservices</h1>
+<p><a href="https://2019.gophercon.sg/speakers/#imre-nagi">Imre Nagi</a>
+showed examples of GraphQL at his company, plus their their application
+architecture in GCP.</p>
+<hr />
+<h1 id="writing-microservice-integration-tests-in-go-finally">Writing
+Microservice Integration Tests in Go (Finally)</h1>
+<p><a
+href="https://2019.gophercon.sg/speakers/#michael-farinacci">Michael
+Farinacci</a> talked about writing mocks that uses channels in the place
+of making calls over the network.</p>
+<p>Personally, I have a bit of doubt about the practices shown, as it
+feels more complex compared to using the right interface/API. Plus it
+didn’t address the “integration” part that I care about (the
+behavior/correctness of whole system).</p>
+<p>I would suggest <a
+href="https://www.hillelwayne.com/post/a-bunch-of-tests/"
+class="uri">https://www.hillelwayne.com/post/a-bunch-of-tests/</a> as
+complementary reading material.</p>
+<hr />
+<h1 id="going-to-sydney">GOing to Sydney</h1>
+<p><a href="https://2019.gophercon.sg/speakers/#katie-fry">Katie Fry</a>
+talked about how to present yourself better during interviews.</p>
+<hr />
+<h1
+id="engineering-luck-essential-and-accidental-complexity-at-gojek">Engineering
+Luck: Essential and Accidental Complexity at GOJEK</h1>
+<p><a href="https://2019.gophercon.sg/speakers/#sidu-ponnappa">Sidu
+Ponnappa</a> talked about lessons learnt when scaling GOJEK as a company
+(most engineering-management related topics).</p>
+<p>Most of the idea comes from <a
+href="https://en.wikipedia.org/wiki/No_Silver_Bullet">No Silver
+Bullet</a>, <a
+href="https://en.wikipedia.org/wiki/The_Mythical_Man-Month">The Mythical
+Man-Month</a> and <a
+href="http://curtclifton.net/papers/MoseleyMarks06a.pdf">Out of the Tar
+Pit</a>. They are presented in the context of GOJEK though, so more
+stories for us.</p>
+					<!-- CONTENT ----------------------------------------------------->
+					<!---------------------------------------------------------------->
+				</article>
+			</main>
+			<div class="col-md-2 col-lg-2"></div>
+		</div>
+
+		<!-- SYNTAX HIGHLIGHT ==========================================-->
+		<script type="text/javascript" src="/js/bitsgofer.js"></script>
+	</body>
+
+</html>

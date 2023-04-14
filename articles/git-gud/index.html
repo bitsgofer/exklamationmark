@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<!-- STYLE =====================================================-->
+		<link rel="stylesheet" href="/css/bitsgofer.css">
+		<link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+
+		<!-- METADATA ==================================================-->
+		<title>Git gud</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="date" content=''>
+	</head>
+	<body>
+		<!---------------------------------------------------------------->
+		<!-- NAVIGATION BAR ---------------------------------------------->
+		<header class="row">
+			<a href="#" class="logo">&gt; <span class="blinking-cursor">_</span></a>
+			<a href="/" class="button">Home</a>
+			<a href="/projects.html" class="button">Projects</a>
+			<a href="/about.html" class="button">About</a>
+		</header>
+		<!-- NAVIGATION BAR ---------------------------------------------->
+		<!---------------------------------------------------------------->
+
+
+		<div class="row" id="doc-wrapper">
+			<div class="col-md-2 col-lg-2"></div>
+			<main class="col-sm-12 col-md-8 col-lg-8" id="doc-content">
+				<article class="line-numbers match-braces">
+					<!---------------------------------------------------------------->
+					<!-- CONTENT ----------------------------------------------------->
+					<h1>Git gud</h1>
+					<p class="article-date"><strong>Published</strong>: 2021-Jun-26 | <strong>Edited</strong>: 2023-April-14</p>
+					<blockquote>
+<p>define: git gud (pun intended)</p>
+<p>“Git gud”, a slang rendering of “get good”, refers to getting better
+at a task or skill, used especially among video gamers online.</p>
+</blockquote>
+<p>This article is about tips that will help us make better use of Git.
+We will also dive into the rationale for these suggestions, using the
+perspectives of both a PR reviewer and submitter.</p>
+<h2 id="tldr">TL;DR</h2>
+<ul>
+<li>Before commit: Use <code>git add --patch</code> to choose a small,
+related set of changes.</li>
+<li>While commit: Write a good commit message (short title, descriptive
+context).</li>
+<li>Make many small, incremental commits instead of one giant
+commit.</li>
+<li>Respect shared git history. Don’t <code>git push --force</code>
+other people’s branches.</li>
+<li>Learn to merge/rebase/cherry-pick. You will use them a lot.</li>
+<li>Review pull requests by commits, rather than files changed.</li>
+<li>(Extra) Learn to use <code>git bisect</code> &amp;&amp;
+<code>git blame</code> to navigate the git history.</li>
+<li>(Extra) Learn <code>git reflog</code> to rescue ourselves.</li>
+</ul>
+<h1 id="why-bother-getting-good-at-git">Why bother getting GOOD at
+git?</h1>
+<p>Regardless of our field of work or programming language,
+<code>git</code> (or other source control tools) will be one of the most
+important tools for software engineers.</p>
+<p>If you ever write some code, you will probably need to work with
+<code>git</code>. Since it’s almost a daily tool, it pays to be
+sufficiently familiar with it.</p>
+<p>Nobody really gets away from <code>git</code>, either:</p>
+<ul>
+<li>Developers will need to write code, obviously.</li>
+<li>Devops/sysadmins/SREs also need to write code/scripts nowadays.</li>
+<li>QAs will also write code (automated scripts).</li>
+<li>Even engineering managers/PMs might need some context about
+<code>git</code> if they need to navigate some code.</li>
+</ul>
+<h2 id="some-anti-patterns">Some anti-patterns</h2>
+<p>People I know sometimes talk about situations where decent
+<code>git</code> knowledge is not emphasized enough. E.g:</p>
+<ul>
+<li>You <strong>work alone in your own repositories</strong>: It’s easy
+to commit in whatever way. This usually leads to hacking up something,
+committing all the changes with <code>git add --all</code> and then
+push.</li>
+<li>For many web apps, <strong>the development practice is a
+“roll-forward” workflow</strong>: Here, people make changes -&gt; commit
+-&gt; push -&gt; deploy. Sometimes teams don’t care to trace back to
+where/when a bug was introduced. This means the importance of git
+history is overlooked.</li>
+<li>Some teams <strong>don’t do code review well</strong>: Here, we
+often see gigantic PRs (e.g: &gt;10 files changed or &gt;300-400 lines),
+code review might not be done well. Whoever review the code probably
+didn’t request for small, reviewable commits.</li>
+<li>Some projects have <strong>a single dev working on one part of it at
+any time</strong>: This person wouldn’t need to collaborate a lot. Thus
+they might not experience the pain of merging/rebasing others’
+commits.</li>
+</ul>
+<h1 id="lets-talk-about-code-review-first">Let’s talk about code review
+first</h1>
+<p>Before talking about good commits, I think it’s better to talk about
+how to review PRs. IMO, this is a strong driver for good
+<code>git</code> practices.</p>
+<p>It’s true that many web apps can downplay the important of code
+review, for example, the “move fast and break things” motto that
+Facebook used to have. However, would you be comfortable if nobody
+review code that <strong>control your airplane/train/car</strong> or
+<strong>charge your bank account</strong>? Surely you do!</p>
+<p>Chances are high that you can recall: - PRs that are too big (too
+many files / too many lines / Github cannot load)? - PRs with lots of
+interleaving changes, where you couldn’t guess what’s going on? - PRs
+too complex, where you/someone else approved without fully
+understanding?</p>
+<p>How many of these PRs introduced unexpected behaviors after they are
+deployed?</p>
+<h2 id="reviewing-commit-by-commit">Reviewing commit-by-commit</h2>
+<p>For someone to effectively review the code, we need to examine what’s
+going on for them. They didn’t write the code, so they need a path to
+understand how the PR will change the system(s) afterwards. If they
+can’t, it’s hard to approve purely based on reasoning.</p>
+<blockquote>
+<p>Sometimes approving might be based more on personal trust (that the
+PR owner have vested their code). This is fine, but remember that
+everyone make mistakes.</p>
+</blockquote>
+<p>To effectively model the changes, are reviewer need at least two
+thing:</p>
+<ol type="1">
+<li>A general idea of what the PR intends to do.</li>
+<li>A way to incrementally see how the code are changed towards this
+intention.</li>
+</ol>
+<ol type="1">
+<li>can be achieved with a description of the PR. Meanwhile, (2) can be
+done by going through the PR <strong>commit by commit</strong>.</li>
+</ol>
+<p>This way, we can slowly see how the code are changed towards the
+goal. It also allow we to focus on one section of the code at a
+time.</p>
+<blockquote>
+<p>Reviewing commit-by-commit is a bit inefficient when it comes to
+sprawling changes across the entire code base, since a later commit
+might overrides the change made in an earlier one.</p>
+<p>However, I would argue that it’s even more important to review these
+large changes <strong>slowly and carefully</strong>.</p>
+</blockquote>
+<p>In GitHub:</p>
+<ul>
+<li>The <code>Conversations</code> tab should clearly describe the
+context and intention for the whole PR.</li>
+<li>We can use the <code>Commits</code> tab and go through each
+commit.</li>
+<li>I would advise against using the <code>Files changed</code> tab to
+review, unless it’s for very trivial changes. This mode is not that
+different from reviewing a giant commit.</li>
+</ul>
+<h1 id="git-tips-for-starting-out">Git tips for starting out</h1>
+<p>Finally we get to talk about actual usage of <code>git</code>!</p>
+<blockquote>
+<p>NOTE: As always, these are never hard rules, but more like
+guidelines. You might need to break the rules sometimes.</p>
+</blockquote>
+<h2 id="preparing-pr-one-commit-at-a-time">Preparing PR, one commit at a
+time</h2>
+<p>Given how we expect PRs to be done, the main task of the PR submitter
+is to <strong>prepare small, easy-to-understand commits</strong>. First,
+we will need to select the right changes.</p>
+<p>A commit <strong>should</strong> contains changes that accomplish one
+single logical thing. Ideally, we would make one change, commit, then
+make another change. However, that’s rarely how it works the wild.
+Sometimes we end up making more changes before deciding it’s time to
+commit. This is where familiarity with <code>git</code> comes in
+handy!</p>
+<p>For example, let’s use this contrived example of a program that count
+similar objects by hashing them:</p>
+<pre><code class="language-go">package main
+
+import (
+    &quot;bytes&quot;
+    &quot;crypto/sha256&quot;
+    &quot;encoding/json&quot;
+    &quot;fmt&quot;
+)
+
+type myObject struct {
+    Data  string
+    Value int
+    // many more fields
+}
+
+func main() {
+    objects := []myObject{
+        {Data: &quot;hello, world!&quot;, Value: 200},
+        {Data: &quot;goodbye, world!&quot;, Value: 400},
+        {Data: &quot;hello, world!&quot;, Value: 500},
+        {Data: &quot;hello, world!&quot;, Value: 200},
+    }
+
+    hasher := sha256.New()
+    uniqueHashCount := make(map[string]int)
+
+    for _, obj := range objects {
+        var b bytes.Buffer
+        encoder := json.NewEncoder(&amp;b)
+        encoder.Encode(obj)
+
+        hasher.Reset()
+        hash := fmt.Sprintf(&quot;%X&quot;, hasher.Sum(b.Bytes()))
+        uniqueHashCount[hash]++
+    }
+
+    for hash, count := range uniqueHashCount {
+        fmt.Printf(&quot;count: %d &lt;= hash: %s\n&quot;, count, hash)
+    }
+}</code></pre>
+<p>Say, we need to change the both the hash and encoding function. After
+doing some experiment, we see this with <code>git diff</code>:</p>
+<pre><code class="language-diff">diff --git a/main.go b/main.go
+index 2bbff75..f9f08fb 100644
+--- a/main.go
++++ b/main.go
+@@ -2,9 +2,9 @@ package main
+
+ import (
+    &quot;bytes&quot;
+-   &quot;crypto/sha256&quot;
+-   &quot;encoding/json&quot;
++   &quot;encoding/gob&quot;
+    &quot;fmt&quot;
++   &quot;hash/fnv&quot;
+ )
+
+ type myObject struct {
+@@ -21,12 +21,12 @@ func main() {
+        {Data: &quot;hello, world!&quot;, Value: 200},
+    }
+
+-   hasher := sha256.New()
++   hasher := fnv.New64()
+    uniqueHashCount := make(map[string]int)
+
+    for _, obj := range objects {
+        var b bytes.Buffer
+-       encoder := json.NewEncoder(&amp;b)
++       encoder := gob.NewEncoder(&amp;b)
+        encoder.Encode(obj)
+
+        hasher.Reset()</code></pre>
+<p>This could work as a single commit. But what if I need it to split it
+into two different ones: a change for the encoding function and another
+change for the hash function?</p>
+<p>We can certainly do so with <code>git add --patch</code>:</p>
+<figure>
+<img src="media/git-add-patch.gif"
+alt="use ‘git add-patch’ to interactively select changes to commit" />
+<figcaption aria-hidden="true">use ‘git add-patch’ to interactively
+select changes to commit</figcaption>
+</figure>
+<p>We tried a simple example, obviously, but it actually covered a few
+things that <code>git add --patch</code> allow us:</p>
+<ul>
+<li>Interactively go through the changes and select what’s going into
+the commit (with the <code>y</code> or <code>n</code> command).</li>
+<li>Split a big change into smaller one (with the <code>s</code>
+command).</li>
+<li>Manually edit a change that cannot be automatically split (with the
+<code>e</code> command).</li>
+</ul>
+<p>Obviously this is a simplified example. We might encounter cases
+where even <code>git add --patch</code> won’t help. This usually
+involves first renaming/deleting code and then making some more changes
+on them. In these cases, we have to make a concious effort to write some
+code first, commit them and then make another edit.</p>
+<ul>
+<li><code>git addd --intent-to-add</code></li>
+</ul>
+<h2 id="only-make-build-able-commit">Only make build-able commit</h2>
+<p>One useful practice that I have learnt from more experienced people
+is to <strong>ONLY</strong> make commits that can be built (and if
+possible, also pass unit tests). This has proven immensely useful once
+we had to start tracing down where a bug was introduced.</p>
+<p>The basic idea is to allow <code>git bisect</code> to work and help
+us search the code base over time for bugs. Plus, it’s also nice when we
+can build and run tests on any commit, instead of figuring out why they
+can’t be built.</p>
+<ul>
+<li><code>git bisect</code></li>
+<li><code>git blame</code></li>
+</ul>
+<h2 id="preview-the-commit">Preview the commit</h2>
+<p>I often like to use <code>git diff --cached</code> to show what’s
+actually going to be committed.</p>
+<p>Before that, using <code>git diff --ignore-all-space</code> is a good
+way to preview changes w/o the clutter of whitespaces (I mostly work
+with C-like languages where whitespaces don’t matter. And then there’s
+YAML :D).</p>
+<h2 id="writing-a-good-commit-message">Writing a good commit
+message</h2>
+<p>Once we have selected what to include in a commit, it’s time to
+finish the job with a commit message. Here, we can use
+<code>git commit --verbose</code> to drop into our text editor and see
+the code changes at the same time.</p>
+<p>There’s already a lot of articles about <a
+href="https://cbea.ms/git-commit/">why and how to write a good commit
+message</a>, so I won’t talk too much about them. Roughly, we want
+to:</p>
+<ul>
+<li>Clearly show what was changed.</li>
+<li>Construct the git history to guide reviewers in understanding the
+changes.</li>
+</ul>
+<p>Personally, I usually try to:</p>
+<ul>
+<li>Use a verb to start the commit title, e.g: <code>Add</code>,
+<code>Remove</code>, <code>Replace</code>, etc.</li>
+<li>Explain the context of the commit in the body to answer questions
+like:
+<ul>
+<li>Why we need this change?</li>
+<li>What alternatives were tried and didn’t get picked?</li>
+<li>Is there any concerns for the future?</li>
+</ul></li>
+</ul>
+<p>The commit itself often describe “how was the code changed”, so it’s
+history is kept pretty well. However, it’s contexts like these that are
+lost over time. Who knows, someday we might need to do some code
+archaeology with <code>git blame</code> to understand why the hell that
+line of code was added.</p>
+<h2 id="rebase-commits">Rebase commits</h2>
+<ul>
+<li><code>git commit --fixup</code></li>
+<li><code>git rebase --continue</code></li>
+<li><code>git rebase --abort</code></li>
+</ul>
+<h2 id="cherry-pick-commits">Cherry-pick commits</h2>
+<ul>
+<li><code>git cherry-pick -x</code></li>
+<li><code>git cherry-pick --continue</code></li>
+<li><code>git cherry-pick --abort</code></li>
+</ul>
+<h2 id="navigating-through-git-history">Navigating through git
+history</h2>
+<p><a href="">More in the future</a></p>
+<ul>
+<li><code>git log</code></li>
+<li><code>git tree</code> (i.e:
+<code>git log --graph --pretty=oneline --abbrev-commit --decorate</code>)</li>
+<li>Searching for commits from the CLI</li>
+</ul>
+					<!-- CONTENT ----------------------------------------------------->
+					<!---------------------------------------------------------------->
+				</article>
+			</main>
+			<div class="col-md-2 col-lg-2"></div>
+		</div>
+
+		<!-- SYNTAX HIGHLIGHT ==========================================-->
+		<script type="text/javascript" src="/js/bitsgofer.js"></script>
+	</body>
+
+</html>
